@@ -1,12 +1,17 @@
 
 <style type="text/css">
 
+* {
+	font-family: Sans, Verdana;
+}
+
 .tbl {
 	font-family: Verdana;
 	font-size: 87%;
 	border: 1px solid #000;
 	border-spacing: 0;
 	border-collapse: collapse;
+	width: 800px;
 }
 
 .tbl caption {
@@ -67,13 +72,16 @@ $data = array(
 	array( 'nomb' => 'daniel', 'apell' => 'sonse')
 );
 
+html_format('Hola Mundo Cruel', 'h1');
+timg('http://www.google.com.ar/images/srpr/logo3w.png');
 
+html_display_sql($data, $camp, 'Tabla Prueba', 'tbl', 'alter');
 
-format('Hola Mundo Cruel', 'h1');
-format('', 'img', 'src="http://www.google.com.ar/images/srpr/logo3w.png"', False);
-
-
-
-display_consulta_sql($data, $camp, 'Tabla Prueba', 'tbl', 'alter');
+tbr(2);
+html_format('Con columna Extra', 'label');
+$dic = array('MSJ1'=>'Hola Mundo..!', 'MSJ2' => 'Adios Mundo Cruel :D' );
+html_display_sql($data, $camp, 'Tabla Prueba 2', 'tbl', 'alter', '', 'opciones', 'row.tpl', $dic);
+tbr(2);
+tpl_display('tmp.tpl');
 
 ?>
