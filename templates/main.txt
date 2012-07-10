@@ -1,0 +1,4 @@
+hola muddo <& header.txt &> cabecera del documento <br />
+hola muddo <& make.txt &> cabecera del documento <br />
+hola muddo <& hola.txt &> cabecera del documento <br />
+

@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Sencillo Sistema de manejo de Plantillas, para PHP 
  * @autor Ricardo D. Quiroga - L2Radamanthys
@@ -8,7 +7,9 @@
  */ 
  
  
-//ruta del directorio raiz de plantillas
+/* ruta del directorio raiz de plantillas, toda plantilla que desee cargarse
+ * debe estar en el correspondiente directorio o subdirectorio de la misma
+*/
 $TEMPLATE_PATH = 'templates/';
 
 
@@ -40,53 +41,65 @@ function html_format($text="", $key="p", $argv="", $end_tag=True, $xml=False) {
 }
 
 
+/*
+ * Dibuja un tag de cierre
+ * 
+ * @param string $key nombre del tag, para que sea valido tiene q ser de tipo HTML
+ */ 
+function tend($key) {
+	echo "</".$key.">\n";
+}
+
+
+/*
+ * Dibuja varios saltos de linea HTML osea etiquetas <br />
+ * 
+ * @param integer @num numero de saltos de lineas a dibujar, por defecto es 1
+ */ 
+function tbr($num=1) {
+	for ($i=1; $i < $num; $i++) {
+		echo '<br />';
+	}
+	echo "\n";
+}
+
 
 function timg($src,  $argv="") {
 	html_format('','img', 'src="'.$src.'" '.$argv, False, True);
 } 
 
 
-/*
- * Muestra una plantilla a partir de un archivo de texto
- * 
- * carga el contenido de un archivo de texto, normalmente formateado
- * como HTML para ser volcado en la pagina destino
- * NOTA: es recomendable usar la funcion display() que es un envoltorio 
- * de esta y otras, aunque esta permite cargar plantillas sin tag de remplazo
- * que no se encuentras en el paht del 
- *  
- * @params string $file_path ruta del archivo contenedor de plantilla
- */ 
-function draw_txt_block($file_path) {
-	$content = file_get_contents($file_path);
-	echo $content;
+function _template_get($file_path) {
+	global $TEMPLATE_PATH;
+	$file_path = $TEMPLATE_PATH.$file_path;
+	if (file_exists($file_path)) {
+		$content = file_get_contents($file_path);
+		return $content;
+	}
+	
+	else { 
+		html_format('Error: No existe: '.$file_path, 'p', 'style="color:#F00;background: #FFFF00; boder: 1px solid #F00"'); 
+		return False;
+	} 
 }
 
 
-/*
- * Similar a draw_txt_block solo que agrega la posibilidad de remplazar 
- * tags definidos, por otro texto
- * 
- * Los tags dentro de la plantila se definen con el siguiente formato
- * <#[key]#> donde el elemnto [key] puede ser cualquier texto sin espacios 
- * siempre y cuando se encuentre encerrado por '<#' '#>' el mismo tiene que 
- * ser definido en el dicionario de remplazo sino sera borrado a la hora de 
- * parsear el documento.
- * 
- * 
- * @param string $file_path ruta del archivo contenedor de plantilla
- * @param array $dict dicionario asociativo, contenedor de las claves y valores
- * 
- */ 
-function drawn_and_assign_txt_block($file_path, $dict) {
-	$content = file_get_contents($file_path);
-	foreach ($dict as $key => $value) {
-		$content = preg_replace('/<#'.$key.'#>/', $value, $content);
-		//echo '/[$'.$key.'$] -> '.$value;
+function _include_sub_templates($content) {
+	$result = preg_match_all('/<&\s(.*)\s&>/', $content, $salida);
+	if ($result) {
+		foreach($salida[1] as $tmp_path) {
+			//$sub_cont = _template_get($tmp_path);
+			$sub_cont_child = _template_get($tmp_path);
+			$sub_cont = _include_sub_templates($sub_cont_child);
+			if ($sub_cont) {
+				$content = str_replace('<& '.$tmp_path.' &>', $sub_cont, $content);
+			}
+			else {
+				$content = str_replace('<& '.$tmp_path.' &>', '', $content);
+			}
+		}
 	}
-	//quita los tags que no fueron definidos en el array de reemplazo
-	preg_replace('/<#(.*)#>/', '', $content);
-	echo $content;
+	return $content;
 }
 
 
@@ -102,26 +115,22 @@ function drawn_and_assign_txt_block($file_path, $dict) {
  * 
  */
 function html_display($file_path, $dict=NULL, $value=NULL) {
-	global $TEMPLATE_PATH;
-	$file_path = $TEMPLATE_PATH.$file_path;
-	
-	if (file_exists($file_path)){ 
+	$content = _template_get($file_path);
+	if($content) {
+		$content = _include_sub_templates($content);
 		if ($dict != NULL) {
 			if ($value != NULL) {
 				$dict = array ($dict => $value);
+			}			
+			foreach ($dict as $key => $value) {
+				$content = str_replace('<#'.$key.'#>', $value, $content);
+				$content = str_replace('<# '.$key.' #>', $value, $content);
 			}
-			drawn_and_assign_txt_block($file_path, $dict);
 		}
-	
-		else {
-			draw_txt_block($file_path);
-		}
+		$content = preg_replace('/<#(.*)#>/', '', $content);
+		$content = preg_replace('/<# (.*) #>/', '', $content);
 	}
-	else{ 
-		html_format('Error: No existe: '.$file_path, 'p', 'style="color:#F00;background: #FFFF00; boder: 1px solid #F00"'); 
-	} 
-	
-
+	echo $content;
 }
 
 
@@ -191,27 +200,28 @@ function html_display_sql($data, $fields, $caption=NULL, $table_css=NULL, $alter
 }
 
 
-/*
- * Dibuja un tag de cierre
- * 
- * @param string $key nombre del tag, para que sea valido tiene q ser de tipo HTML
- */ 
-function tend($key) {
-	echo "</".$key.">\n";
-}
 
 
-/*
- * Dibuja varios saltos de linea HTML osea etiquetas <br />
- * 
- * @param integer @num numero de saltos de lineas a dibujar, por defecto es 1
- */ 
-function tbr($num=1) {
-	for ($i=1; $i < $num; $i++) {
-		echo '<br />';
-	}
-	echo "\n";
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
