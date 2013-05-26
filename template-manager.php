@@ -4,7 +4,11 @@
  * @autor Ricardo D. Quiroga - L2Radamanthys
  * @licence GPL2
  * @package simple-template-php-manager
+ * 
+ * Nota: todas las funciones que comiencen con '_' retornan el contenido en ves
+ * de volcarlo directamente a la salida
  */ 
+  
  
  
 /* ruta del directorio raiz de plantillas, toda plantilla que desee cargarse
@@ -41,6 +45,20 @@ function html_format($text="", $key="p", $argv="", $end_tag=True, $xml=False) {
 }
 
 
+function _html_format($text="", $key="p", $argv="", $end_tag=True, $xml=False) {
+	if ($end_tag) {
+		$cad = "<".$key." ".$argv." >".$text."</".$key.">\n";
+	}
+	elseif ($key == 'input' or $key == 'img' or $key == 'br' or $key == 'hr') {
+		$cad = "<".$key." ".$argv." />".$text."\n";
+	}
+	else {
+		$cad = "<".$key." ".$argv." >".$text."\n";
+	}
+	return $cad;
+}
+
+
 /*
  * Dibuja un tag de cierre
  * 
@@ -51,24 +69,55 @@ function tend($key) {
 }
 
 
+function _tend($key) {
+    return "</".$key.">\n";
+}
+
+
 /*
  * Dibuja varios saltos de linea HTML osea etiquetas <br />
  * 
  * @param integer @num numero de saltos de lineas a dibujar, por defecto es 1
  */ 
 function tbr($num=1) {
-	for ($i=1; $i < $num; $i++) {
+	for ($i=1; $i <= $num; $i++) {
 		echo '<br />';
 	}
 	echo "\n";
 }
 
 
+function _tbr($num=1) {
+    $cad= "";
+	for ($i=1; $i <= $num; $i++) {
+		$cad .= "<br />\n";
+	}
+	return $cad;
+}
+
+
+/**
+ * Dibuja un <img> tag
+ * 
+ * @param string $scr ruta de la imagen
+ * @param string $argv parametros opcionales
+ */
 function timg($src,  $argv="") {
 	html_format('','img', 'src="'.$src.'" '.$argv, False, True);
 } 
 
+function _timg($src,  $argv="") {
+	return _html_format('','img', 'src="'.$src.'" '.$argv, False, True);
+} 
 
+
+/* 
+ *  Carga una plantilla, sin aplicar remplazo de TAGS 
+ *
+ *  En si es mas un wraper para cargar archivos que un cargador de plantillas
+ *
+ * @param string $file_path ruta de la plantilla 
+ */
 function _template_get($file_path) {
 	global $TEMPLATE_PATH;
 	$file_path = $TEMPLATE_PATH.$file_path;
@@ -134,6 +183,26 @@ function html_display($file_path, $dict=NULL, $value=NULL) {
 }
 
 
+function _html_display($file_path, $dict=NULL, $value=NULL) {
+	$content = _template_get($file_path);
+	if($content) {
+		$content = _include_sub_templates($content);
+		if ($dict != NULL) {
+			if ($value != NULL) {
+				$dict = array ($dict => $value);
+			}			
+			foreach ($dict as $key => $value) {
+				$content = str_replace('<#'.$key.'#>', $value, $content);
+				$content = str_replace('<# '.$key.' #>', $value, $content);
+			}
+		}
+		$content = preg_replace('/<#(.*)#>/', '', $content);
+		$content = preg_replace('/<# (.*) #>/', '', $content);
+	}
+	return $content;
+}
+
+
 /*
  * Muestra una consulta SQL en formato tabla
  * 
@@ -144,13 +213,15 @@ function html_display($file_path, $dict=NULL, $value=NULL) {
  * NOTA: los unicos parametros obligatorios son $data y $fields el resto 
  * son opcionales
  * 
- * @param array $data resultado de la consultaa
+ * @param array $data resultado de la consulta
  * @param array $field dicionario con los nombres de los campos(key), y titulos(value) para la tabla
  * @param string $caption titulo opcional de la tabla
  * @param string $table_css nombre de la clase (CSS) para la tabla en gral
  * @param string $alter_row_css nombre de la clase (CSS) para las columnas impares
  * @param string $params parametros opcionales para incristacion directa en el HTML
- * 
+ * @param string $extra_name nombre de la columna extra, normalmente para opciones 
+ * @param string $extra contenido de la colummna extra
+ * @param array $dict array asociativo con claves opcionales, para los datos de la colummna extra
  */ 
 function html_display_sql($data, $fields, $caption=NULL, $table_css=NULL, $alter_row_css=NULL, $params='', $extra_name="", $extra=NULL, $dict=NULL) {
 	if ($table_css != NULL) {
@@ -165,6 +236,113 @@ function html_display_sql($data, $fields, $caption=NULL, $table_css=NULL, $alter
 		echo '<caption>'.$caption.'</caption>';
 	}
 	
+	//columnas nombres
+	echo '<tr>';
+	foreach($fields as $value) {
+		echo '<th>'.$value.'</th>';
+	}
+	if ($extra != NULL) {
+		echo '<th>'.$extra_name.'</th>';
+	}
+	echo '</tr>';
+	
+	//campos
+	$cont = 0;
+	while($reg = mysql_fetch_assoc($data)) {
+		if ($cont % 2 == 0) { 
+			echo '<tr class="'.$alter_row_css.'">';
+		}
+		else {
+			echo '<tr>';
+		}
+		foreach($fields as $key => $value) {
+			echo '<td>'.$reg[$key].'</td>';	
+		}
+		if ($extra != NULL) {
+			echo '<td>';
+			$cad .= _html_display($extra, array_merge($dict, $reg));
+			echo '</td>';
+		}
+		echo '</tr>';
+		$cont += 1; //para hoja stilo de las colummnas alternativas
+	}
+	echo '</table>';
+}
+
+
+
+function _html_display_sql($data, $fields, $caption=NULL, $table_css=NULL, $alter_row_css=NULL, $params='', $extra_name="", $extra=NULL, $dict=NULL) {
+    $cad = "";
+	if ($table_css != NULL) {
+		$cad .= '<table class="'.$table_css.'" '.$params.' >';
+	}	
+	else {
+		$cad .= '<table '.$params.' >';
+	}
+	
+	//titulo tabla
+	if ($caption != NULL) {
+		$cad .= '<caption>'.$caption.'</caption>';
+	}
+	
+	//columnas nombres
+	$cad .= '<tr>';
+	foreach($fields as $value) {
+		$cad .= '<th>'.$value.'</th>';
+	}
+	if ($extra != NULL) {
+		$cad .= '<th>'.$extra_name.'</th>';
+	}
+	$cad .= '</tr>';
+	
+	//campos
+	$cont = 0;
+    while($reg = mysql_fetch_assoc($data)) {
+		if ($cont % 2 == 0) { 
+			$cad .= '<tr class="'.$alter_row_css.'">';
+		}
+		else {
+			$cad .= '<tr>';
+		}
+        
+		foreach($fields as $key => $value) {
+            #if (isset($fields['rpr_'.$key])) {
+            #    $m_dict = $fields['rpr_'.$key];
+            #    $cad .= '<td>'.$m_dict[$reg[$key]].'</td>';	
+            #}
+            #else {
+            $cad .= '<td>'.$reg[$key].'</td>';	
+            #}
+		}
+		if ($extra != NULL) {
+			$cad .= '<td>';
+			$cad .= _html_display($extra, array_merge($dict, $reg));
+			$cad .= '</td>';
+		}
+		$cad .= '</tr>';
+		$cont += 1;
+	}
+	$cad .= '</table>';
+    return $cad;
+}
+
+
+/**
+    Similar a html_display_sql solo que en ves de trabajar con registros de consultas 
+    MySQL usa arrays multidimencionales
+*/
+function html_display_matrix($data, $fields, $caption=NULL, $table_css=NULL, $alter_row_css=NULL, $params='', $extra_name="", $extra=NULL, $dict=NULL) {
+	if ($table_css != NULL) {
+		echo '<table class="'.$table_css.'" '.$params.' >';
+	}	
+	else {
+		echo '<table '.$params.' >';
+	}
+	
+	//titulo tabla
+	if ($caption != NULL) {
+		echo '<caption>'.$caption.'</caption>';
+	}
 	
 	//columnas nombres
 	echo '<tr>';
@@ -190,20 +368,68 @@ function html_display_sql($data, $fields, $caption=NULL, $table_css=NULL, $alter
 		}
 		if ($extra != NULL) {
 			echo '<td>';
-			html_display($extra, $dict);
+			$cad .= _html_display($extra, array_merge($dict, $reg));
 			echo '</td>';
 		}
 		echo '</tr>';
-		$cont += 1;
+		$cont += 1; //para hoja stilo de las colummnas alternativas
 	}
 	echo '</table>';
 }
 
 
+function _html_display_matrix($data, $fields, $caption=NULL, $table_css=NULL, $alter_row_css=NULL, $params='', $extra_name="", $extra=NULL, $dict=NULL) {
+    $cad = "";
+	if ($table_css != NULL) {
+		$cad .= '<table class="'.$table_css.'" '.$params.' >';
+	}	
+	else {
+		$cad .= '<table '.$params.' >';
+	}
+	
+	//titulo tabla
+	if ($caption != NULL) {
+		$cad .= '<caption>'.$caption.'</caption>';
+	}
+	
+	//columnas nombres
+	$cad .= '<tr>';
+	foreach($fields as $value) {
+		$cad .= '<th>'.$value.'</th>';
+	}
+	if ($extra != NULL) {
+		$cad .= '<th>'.$extra_name.'</th>';
+	}
+	$cad .= '</tr>';
+	
+	//campos
+	$cont = 0;
+	foreach($data as $reg) {
+		if ($cont % 2 == 0) { 
+			$cad .= '<tr class="'.$alter_row_css.'">';
+		}
+		else {
+			$cad .= '<tr>';
+		}
+        
+		foreach($fields as $key => $value) {
+			$cad .= '<td>'.$reg[$key].'</td>';	
+		}
+		if ($extra != NULL) {
+			$cad .= '<td>';
+			$cad .= _html_display($extra, array_merge($dict, $reg));
+			$cad .= '</td>';
+		}
+		$cad .= '</tr>';
+		$cont += 1;
+	}
+	$cad .= '</table>';
+    return $cad;
+}
 
-
-
-
+function css_include_tag($src) {
+    return '<link href="'.$src.'" rel="stylesheet" type="text/css" />';
+}
 
 
 

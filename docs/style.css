@@ -1,0 +1,19 @@
+body {
+    background-color: #999;
+    margin: 0;
+}
+
+h1 {
+    color: #003046;
+}
+
+.body {
+    width: 980px;
+    margin: 0 auto;
+    background-color: #FFF;
+    padding: 10px 20px;
+   
+    font-family: Verdana;
+}
+
+
