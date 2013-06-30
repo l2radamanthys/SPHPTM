@@ -1,0 +1,8 @@
+texto
+<# usuario #>
+<br>
+<# usuario::msja #> iii <# usuario::msjb #>
+<br>
+otro texto
+
+<br /><br />
